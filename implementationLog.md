@@ -182,6 +182,14 @@ This document tracks what has been implemented in the Stats Vectorization & 3D G
   - Descriptions now explain statistical profiles, play style characteristics, and specific thresholds (e.g., "55%+ kill rate", "6+ assists/set")
   - Combination descriptions explain both primary trait behavior and secondary trait specialization
   - Removed hyphen from combination names (e.g., "Maverick Striker" instead of "Maverick - Striker")
+  - Created comprehensive README documentation (`VectorGraphREADME.md`) covering overview, features, architecture, usage, and design principles
+
+- **v2.13** - Added "Tireless" primary trait to diversify high-volume players
+  - Added new "Tireless" prefix for elite high-volume players (>6.5 spike attempts/set OR >2.8 ape attempts/set OR >9.5 assists/set)
+  - Made "Workhorse" more restrictive by excluding players who qualify for "Tireless"
+  - "Tireless" represents the top tier of high-volume players, while "Workhorse" covers the next tier
+  - This splits the previously overused "Workhorse" category into two groups for better diversity
+  - Updated all description dictionaries to include "Tireless" explanations
 
 - **v2.3** - Fixed PCA component color coding and improved spacing
   - Fixed dynamic color coding for PCA feature weights (was showing all dark for PC1/PC2)
