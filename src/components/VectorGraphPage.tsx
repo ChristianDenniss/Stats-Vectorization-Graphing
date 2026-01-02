@@ -8,7 +8,7 @@ import * as THREE from "three";
 import { mockPlayers, mockSeasons } from "../mockData/generateMockData";
 import { buildSeasonVectors, computePCA3D, VECTOR_FEATURE_ORDER } from "../analytics/statsVectorization";
 import type { PlayerSeasonVectorRow } from "../analytics/statsVectorization";
-import { classifyPlayerArchetype, type PlayerArchetype } from "../analytics/playerArchetypes";  
+import { classifyPlayerArchetype, type PlayerArchetype } from "../analytics/playerArchetypes";
 import "../styles/VectorGraphPage.css";
 
 const DEFAULT_MIN_SETS = 5;
@@ -128,8 +128,12 @@ function VectorGraph3D({
   const [controlsCollapsed, setControlsCollapsed] = useState<boolean>(true);
   const [axesCollapsed, setAxesCollapsed] = useState<boolean>(true);
   const controlsRef = useRef<any>(null);
+  const cameraRef = useRef<THREE.Camera | null>(null);
   // Track hovered points with their distances (using object instead of Map for React state)
   const [hoveredPoints, setHoveredPoints] = useState<Record<string, number>>({});
+  // Search functionality
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchResults, setSearchResults] = useState<PlayerSeasonVectorRow[]>([]);
 
   // Compute PCA on all vectors and project to 3D (uses all 12 dimensions)
   const zVectors = vectorRows.map(row => row.zVector);
@@ -151,6 +155,101 @@ function VectorGraph3D({
     });
     return archetypeMap;
   }, [vectorRows]);
+
+  // Calculate archetype counts for legend
+  const archetypeCounts = useMemo(() => {
+    const counts = new Map<string, { archetype: PlayerArchetype; count: number }>();
+    archetypeAssignments.forEach((archetype) => {
+      const existing = counts.get(archetype.id);
+      if (existing) {
+        existing.count++;
+      } else {
+        counts.set(archetype.id, { archetype, count: 1 });
+      }
+    });
+    // Sort by count (descending), then by name
+    return Array.from(counts.values()).sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return a.archetype.name.localeCompare(b.archetype.name);
+    });
+  }, [archetypeAssignments]);
+
+  // Get statistical thresholds for archetype
+  const getArchetypeThresholds = (archetypeId: string): string => {
+    const thresholds: Record<string, string> = {
+      "maverick": "Total errors >2.0/set OR spiking errors >1.2/set + setting errors >0.4/set OR spiking errors >1.5/set OR setting errors >1.0/set",
+      "inconsistent": "Total errors 1.2-2.0/set AND (multiple error types OR spiking errors >0.9/set OR setting errors >0.6/set)",
+      "precise": "Total errors <0.5/set AND spiking errors <0.3/set AND setting errors <0.2/set",
+      "tireless": "Spike attempts >8.0/set OR ape attempts >3.5/set OR assists >11.0/set",
+      "workhorse": "Spike attempts >5.0/set OR ape attempts >2.0/set OR assists >8.0/set (but not Tireless)",
+      "stalwart": "High volume (spike attempts >5.0/set OR ape attempts >2.0/set OR assists >8.0/set) AND total errors <0.8/set AND spiking errors <0.5/set AND setting errors <0.3/set",
+      "opportunistic": "Low volume (attempts <3.0/set) but high impact (kills >1.5/set with >45% kill rate)",
+      "selective": "Very low volume: spike attempts <1.5/set AND ape attempts <0.5/set AND assists <2.0/set AND digs <2.0/set",
+      "steady": "Low attempts (spike <2.0/set, ape <0.5/set) AND low errors (spiking <0.3/set, setting <0.2/set, serving <0.2/set)",
+      "striker": "Kills >2.5 spike/set OR >1.0 ape/set AND attempts >4.0 spike/set OR >1.5 ape/set",
+      "piercer": "Kills >3.0 spike/set OR >1.5 ape/set AND kill rate >55% AND total kills >3.0/set",
+      "guardian": "Digs >3.0/set OR blocks >1.0/set",
+      "playmaker": "Assists >6.0/set",
+      "finisher": "Spike kills >2.5/set OR ape kills >1.0/set",
+      "intimidator": "Blocks >1.0/set OR block follows >1.5/set",
+      "bomber": "Aces >0.8/set",
+      "versatile": "Multiple roles: (offense + defense) OR (offense + setting) OR (defense + setting)",
+      "jack-of-all-trades": "3+ stats in 0.5-3.0 range across multiple categories",
+      "perfectly-balanced": "Offense 1.5-4.0/set AND defense 1.5-4.0/set AND setting 1.5-4.0/set AND all within 1.5 of each other AND errors <1.0/set",
+      "unicorn": "Elite in 3+ categories: offense (>3.5 kills/set), setting (>8.0 assists/set), defense (>4.5 digs/set OR >1.5 blocks/set), serving (>1.2 aces/set), or efficiency (>60% kill rate)",
+      "sniper": "Kill rate >55% AND kills >2.5/set AND spiking errors <0.8/set AND setting errors <0.3/set",
+      "gunslinger": "Total attempts >9.0/set AND total kills >5.0/set AND total errors >2.0/set",
+      "anchor": "Low attempts (spike <2.0/set, ape <0.5/set) AND low errors (spiking <0.3/set, setting <0.2/set, serving <0.2/set)",
+      "technician": "Total errors <0.4/set AND spiking errors <0.25/set AND setting errors <0.15/set AND attempts ≥3.0/set AND kill rate >50% AND kills ≥2.0/set",
+      "maverick-playmaker": "High errors (Maverick) AND assists >6.0/set (Playmaker)",
+      "playmaking-striker": "Assists >6.0/set (Playmaker) AND (kills >2.5 spike/set OR >1.0 ape/set) AND (attempts >4.0 spike/set OR >1.5 ape/set) (Striker)",
+      "playmaking-piercer": "Assists >6.0/set (Playmaker) AND (kills >3.0 spike/set OR >1.5 ape/set) AND kill rate >55% AND total kills >3.0/set (Piercer)",
+      "playmaking-intimidator": "Assists >6.0/set (Playmaker) AND blocks >1.0/set OR block follows >1.5/set (Intimidator)",
+      "intimidating-playmaker": "Blocks >1.0/set OR block follows >1.5/set (Intimidator) AND assists >6.0/set (Playmaker)"
+    };
+    return thresholds[archetypeId] || "Statistical thresholds vary based on combination";
+  };
+
+  // State for clicked archetype popup
+  const [clickedArchetype, setClickedArchetype] = useState<string | null>(null);
+  const [popupPosition, setPopupPosition] = useState<{ left: number; top: number } | null>(null);
+  const [legendHidden, setLegendHidden] = useState<boolean>(false);
+  const legendRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  
+  // Update popup position when clicked archetype changes
+  useEffect(() => {
+    if (clickedArchetype && legendRef.current) {
+      const itemEl = itemRefs.current.get(clickedArchetype);
+      if (itemEl) {
+        const itemRect = itemEl.getBoundingClientRect();
+        const legendRect = legendRef.current.getBoundingClientRect();
+        setPopupPosition({
+          left: legendRect.right + 12,
+          top: itemRect.top
+        });
+      }
+    } else {
+      setPopupPosition(null);
+    }
+  }, [clickedArchetype]);
+  
+  // Update popup position when clicked archetype changes
+  useEffect(() => {
+    if (clickedArchetype && legendRef.current) {
+      const itemEl = itemRefs.current.get(clickedArchetype);
+      if (itemEl) {
+        const itemRect = itemEl.getBoundingClientRect();
+        const legendRect = legendRef.current.getBoundingClientRect();
+        setPopupPosition({
+          left: legendRect.right + 12,
+          top: itemRect.top
+        });
+      }
+    } else {
+      setPopupPosition(null);
+    }
+  }, [clickedArchetype]);
   
   const points = useMemo(() => {
     if (vectorRows.length === 0) return [];
@@ -320,6 +419,69 @@ function VectorGraph3D({
     }
   };
 
+  // Search functionality
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    const matches = vectorRows.filter(row => 
+      row.playerName.toLowerCase().includes(query)
+    );
+    setSearchResults(matches);
+  }, [searchQuery, vectorRows]);
+
+  // Handle search result selection
+  const handleSearchSelect = (player: PlayerSeasonVectorRow) => {
+    // Find the player's position
+    const playerPoint = points.find(p => p.row.playerId === player.playerId);
+    if (!playerPoint || !controlsRef.current || !cameraRef.current) return;
+
+    // Select the player
+    handlePlayerClick(player);
+
+    // Move camera to focus on the player
+    const [px, py, pz] = playerPoint.position;
+    const target = new THREE.Vector3(px, py, pz);
+    
+    // Calculate a good camera position (offset from the player)
+    const offsetDistance = maxRange * 0.8;
+    const offset = new THREE.Vector3(offsetDistance, offsetDistance, offsetDistance);
+    const newCameraPos = target.clone().add(offset);
+    
+    // Animate camera to the new position
+    if (controlsRef.current && cameraRef.current) {
+      // Set the target (what the camera looks at)
+      controlsRef.current.target.copy(target);
+      
+      // Animate camera position
+      const startPos = cameraRef.current.position.clone();
+      const duration = 1000; // 1 second
+      const startTime = Date.now();
+      
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // Easing function (ease-out)
+        const eased = 1 - Math.pow(1 - progress, 3);
+        
+        cameraRef.current!.position.lerpVectors(startPos, newCameraPos, eased);
+        controlsRef.current!.update();
+        
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        }
+      };
+      
+      animate();
+    }
+    
+    // Clear search after selection
+    setSearchQuery("");
+  };
+
   // Keyboard zoom controls
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -360,12 +522,101 @@ function VectorGraph3D({
 
   return (
     <div className="vector-graph-3d-container">
+      {/* Search Bar */}
+      <div className="player-search-container">
+        <input
+          type="text"
+          className="player-search-input"
+          placeholder="Search players..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        {searchResults.length > 0 && (
+          <div className="player-search-results">
+            {searchResults.slice(0, 5).map((player) => (
+              <div
+                key={player.playerId}
+                className="player-search-result-item"
+                onClick={() => handleSearchSelect(player)}
+              >
+                {player.playerName}
+              </div>
+            ))}
+            {searchResults.length > 5 && (
+              <div className="player-search-result-more">
+                +{searchResults.length - 5} more
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Archetype Legend */}
+      {archetypeCounts.length > 0 && (
+        <>
+          <div className={`archetype-legend ${legendHidden ? 'legend-hidden' : ''}`} ref={legendRef}>
+            {!legendHidden && (
+              <>
+                {archetypeCounts.map(({ archetype, count }) => (
+                  <div
+                    key={archetype.id}
+                    ref={(el) => {
+                      if (el) itemRefs.current.set(archetype.id, el);
+                      else itemRefs.current.delete(archetype.id);
+                    }}
+                    className="archetype-legend-item"
+                    onClick={() => setClickedArchetype(clickedArchetype === archetype.id ? null : archetype.id)}
+                  >
+                    <span
+                      className="archetype-legend-color"
+                      style={{ backgroundColor: archetype.color }}
+                    />
+                    <span className="archetype-legend-name">{archetype.name}</span>
+                    <span className="archetype-legend-count">({count})</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+          <button
+            className={`archetype-legend-toggle ${legendHidden ? 'legend-hidden-toggle' : ''}`}
+            onClick={() => setLegendHidden(!legendHidden)}
+            title={legendHidden ? "Show legend" : "Hide legend"}
+          >
+            {legendHidden ? '>' : '<'}
+          </button>
+        </>
+      )}
+      {/* Popup rendered outside legend to escape overflow constraints */}
+      {clickedArchetype && popupPosition && (() => {
+        const archetype = archetypeCounts.find(a => a.archetype.id === clickedArchetype)?.archetype;
+        if (!archetype) return null;
+        return (
+          <div 
+            className="archetype-legend-popup"
+            style={{
+              left: `${popupPosition.left}px`,
+              top: `${popupPosition.top}px`
+            }}
+          >
+            <div className="archetype-popup-header">{archetype.name}</div>
+            <div className="archetype-popup-description">{archetype.description}</div>
+            <div className="archetype-popup-thresholds">
+              <strong>Statistical Thresholds:</strong>
+              <div className="archetype-popup-thresholds-text">{getArchetypeThresholds(archetype.id)}</div>
+            </div>
+          </div>
+        );
+      })()}
       <Canvas
         camera={{
           position: [centerX + cameraDistance, centerY + cameraDistance, centerZ + cameraDistance],
           fov: 50
         }}
         onClick={handleCanvasClick}
+        onCreated={({ camera }) => {
+          cameraRef.current = camera;
+        }}
       >
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
@@ -539,10 +790,6 @@ const VectorGraphPage: React.FC = () => {
   
   const players = mockPlayers;
   const seasons = mockSeasons;
-  const playersLoading = false;
-  const seasonsLoading = false;
-  const playersError = null;
-  const seasonsError = null;
   
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<number | null>(null);
   const [minSetsPlayed, setMinSetsPlayed] = useState<number>(DEFAULT_MIN_SETS);
@@ -562,42 +809,6 @@ const VectorGraphPage: React.FC = () => {
     }
     return buildSeasonVectors(players, selectedSeasonNumber, minSetsPlayed);
   }, [players, selectedSeasonNumber, minSetsPlayed]);
-
-  // Loading state (currently always false with mock data)
-  if (playersLoading || seasonsLoading) {
-    return (
-      <div className="vector-graph-page">
-        <div className="loading-container">
-          <h2>Loading Vector Graph...</h2>
-          <p>Fetching player and season data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state (currently always null with mock data)
-  if (playersError || seasonsError) {
-    return (
-      <div className="vector-graph-page">
-        <div className="error-container">
-          <h2>Error Loading Data</h2>
-          {playersError && <p>Error loading players: {playersError}</p>}
-          {seasonsError && <p>Error loading seasons: {seasonsError}</p>}
-        </div>
-      </div>
-    );
-  }
-
-  if (!players || !seasons || seasons.length === 0) {
-    return (
-      <div className="vector-graph-page">
-        <div className="error-container">
-          <h2>No Data Available</h2>
-          <p>No seasons found. Please ensure data is available in the database.</p>
-        </div>
-      </div>
-    );
-  }
 
   const sortedSeasons = [...seasons].sort((a, b) => b.seasonNumber - a.seasonNumber);
 

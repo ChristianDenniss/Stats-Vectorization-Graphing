@@ -191,6 +191,56 @@ This document tracks what has been implemented in the Stats Vectorization & 3D G
   - This splits the previously overused "Workhorse" category into two groups for better diversity
   - Updated all description dictionaries to include "Tireless" explanations
 
+- **v2.14** - Adjusted Tireless/Workhorse thresholds for better distribution
+  - Increased "Tireless" thresholds to be more restrictive: >7.0 spike attempts/set (was 6.5), >3.2 ape attempts/set (was 2.8), >10.5 assists/set (was 9.5)
+  - This creates a more even split between "Tireless" (elite) and "Workhorse" (high volume) categories
+  - Fixed duplicate "workhorse" entry that was causing classification issues
+  - Further adjusted Tireless spike attempts threshold to >7.5/set for better exclusivity
+
+- **v3.0** - Player search functionality and archetype legend
+  - Added search bar in top left of graph section for searching players by name
+  - Real-time filtering as user types with dropdown results (shows up to 5 matches)
+  - Clicking a search result animates camera to focus on the selected player and automatically selects them
+  - Camera smoothly animates to player position with easing function
+  - Search bar styled to match dark graph background (#1a1a1a) with subtle border (#3a3a3a)
+  - Search bar width set to 224px (reduced from 280px for better proportions)
+  - Added archetype legend below search bar showing all archetypes present in current graph
+  - Legend displays archetype name, color indicator, and player count
+  - Clicking an archetype in legend shows detailed popup with:
+    - High-level description (what the archetype represents)
+    - Statistical thresholds (specific numbers/conditions)
+  - Legend styled to match dark theme with custom scrollbar (thin dark bar, no box)
+  - Legend has proper bottom margin (2rem) to prevent overlap with screen edge
+  - Legend scrollable with max-height constraint to stay within graph bounds
+  - Fixed seasons endpoint to use `/api/seasons/skinny` to avoid 500 errors from loading unnecessary relations
+  - Improved error messages to include status codes for better debugging
+
+- **v3.1** - Archetype classification improvements
+  - Added prioritization logic for Workhorse/Tireless players to prefer offensive traits (Striker, Piercer) over defensive (Guardian)
+  - This ensures high-volume offensive players get "Workhorse Striker" instead of "Workhorse Guardian"
+  - Priority order: Piercer > Striker > Finisher for offensive traits
+  - Helps create more diverse archetype combinations
+  - Added Playmaker prioritization for setters (assists >6.0/set) to ensure offensive setters get "Playmaking Striker" instead of just "Striker"
+  - Special combinations now include primary traits: "Tireless Playmaking Striker", "Workhorse Playmaking Piercer", etc.
+  - Renamed "Precise" primary trait to "Technician" for better naming when combined (e.g., "Technician Versatile" instead of "Precise Versatile")
+  - Updated Tireless threshold to 7.5 spike attempts/set for optimal exclusivity
+
+- **v3.2** - UI improvements and fixes
+  - Fixed archetype legend popup visibility: changed to fixed positioning to escape container overflow constraints
+  - Popup now renders outside legend container and calculates position using refs and getBoundingClientRect()
+  - Fixed search results dropdown z-index (25) to appear above legend (10) when visible
+  - Changed search results to absolute positioning with proper top calculation
+  - Added hide/show toggle for archetype legend with sliding animation
+  - Toggle uses < and > arrows instead of × and ⓘ buttons
+  - Button positioned outside legend: on right side when visible, moves to left edge when hidden
+  - Button styled as text-only (no background/border) with muted opacity (0.6) that becomes fully visible on hover
+  - Removed top padding from legend since button is now outside
+  - Made Tireless thresholds more restrictive (8.0/3.5/11.0 instead of 7.5/3.2/10.5) to reduce overuse
+  - Added prioritization logic: error-based primary traits (Maverick, Inconsistent, Precise) now take priority over volume-based traits (Tireless, Workhorse) when player qualifies for both
+  - This creates more diverse combinations like "Inconsistent Striker", "Maverick Striker", "Workhorse Striker" instead of mostly "Tireless"
+  - Added "Technician" as standalone archetype (not a prefix) for players with exceptional technical precision
+  - Reverted "Precise" back to being a prefix (primary trait) - only renamed standalone version to "Technician"
+
 - **v2.3** - Fixed PCA component color coding and improved spacing
   - Fixed dynamic color coding for PCA feature weights (was showing all dark for PC1/PC2)
   - Improved weight normalization to use min-max scaling within top features (0.3-1.0 opacity range)

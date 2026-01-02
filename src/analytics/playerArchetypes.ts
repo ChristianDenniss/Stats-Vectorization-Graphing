@@ -60,14 +60,26 @@ const PRIMARY_TRAITS: PrimaryTrait[] = [
     name: "Precise",
     condition: (f) => {
       const totalErrors = f.spikingErrorsPerSet + f.settingErrorsPerSet + f.servingErrorsPerSet + f.miscErrorsPerSet;
-      return totalErrors < 0.5 && f.spikingErrorsPerSet < 0.3 && f.settingErrorsPerSet < 0.2;
+      // Very low errors across all categories - more restrictive
+      return totalErrors < 0.35 && f.spikingErrorsPerSet < 0.2 && f.settingErrorsPerSet < 0.15 && f.servingErrorsPerSet < 0.1;
+    }
+  },
+  {
+    id: "tireless",
+    name: "Tireless",
+    condition: (f) => {
+      // Elite volume - top tier high-volume players (very restrictive)
+      return (f.spikeAttemptsPerSet > 8.0 || f.apeAttemptsPerSet > 3.5 || f.assistsPerSet > 11.0);
     }
   },
   {
     id: "workhorse",
     name: "Workhorse",
-    condition: (f) => 
-      (f.spikeAttemptsPerSet > 5.0 || f.apeAttemptsPerSet > 2.0 || f.assistsPerSet > 8.0)
+    condition: (f) => {
+      // High volume but not elite - exclude those who qualify for Tireless
+      const isTireless = (f.spikeAttemptsPerSet > 8.0 || f.apeAttemptsPerSet > 3.5 || f.assistsPerSet > 11.0);
+      return !isTireless && (f.spikeAttemptsPerSet > 5.0 || f.apeAttemptsPerSet > 2.0 || f.assistsPerSet > 8.0);
+    }
   },
   {
     id: "stalwart",
@@ -270,6 +282,26 @@ const STANDALONE_ARCHETYPES: StandaloneArchetype[] = [
     condition: (f) => 
       (f.spikeAttemptsPerSet < 2.0 && f.apeAttemptsPerSet < 0.5) && 
       (f.spikingErrorsPerSet < 0.3 && f.settingErrorsPerSet < 0.2 && f.servingErrorsPerSet < 0.2)
+  },
+  {
+    id: "technician",
+    name: "Technician",
+    color: "#64B5F6",
+    description: "Technical precision specialist who excels through flawless execution, maintaining exceptional efficiency with minimal errors across all aspects of play",
+    condition: (f) => {
+      const totalErrors = f.spikingErrorsPerSet + f.settingErrorsPerSet + f.servingErrorsPerSet + f.miscErrorsPerSet;
+      const totalAttempts = f.spikeAttemptsPerSet + f.apeAttemptsPerSet;
+      const totalKills = f.spikeKillsPerSet + f.apeKillsPerSet;
+      const killRate = totalAttempts > 0 ? totalKills / totalAttempts : 0;
+      
+      // Technical precision: very low errors, good efficiency, meaningful volume
+      return totalErrors < 0.4 && // Extremely low errors
+             f.spikingErrorsPerSet < 0.25 && // Minimal spiking errors
+             f.settingErrorsPerSet < 0.15 && // Minimal setting errors
+             totalAttempts >= 3.0 && // Meaningful volume
+             killRate > 0.50 && // Good efficiency (50%+)
+             totalKills >= 2.0; // Meaningful impact
+    }
   }
 ];
 
@@ -297,13 +329,78 @@ export function classifyPlayerArchetype(features: Record<string, number>): Playe
   // Find matching primary trait
   const primaryTrait = PRIMARY_TRAITS.find(trait => trait.condition(features));
   
-  // Find matching secondary trait
-  const secondaryTrait = SECONDARY_TRAITS.find(trait => trait.condition(features));
+  // Find matching secondary trait - prioritize based on player role and primary trait
+  let secondaryTrait = SECONDARY_TRAITS.find(trait => trait.condition(features));
   
-  // Special combinations: Check for dual-secondary traits first (playmaker + intimidator)
+  // If player qualifies for multiple secondary traits, prioritize based on primary trait and role
+  if (primaryTrait && secondaryTrait) {
+    const allMatchingTraits = SECONDARY_TRAITS.filter(trait => trait.condition(features));
+    
+    // For Workhorse/Tireless players, prioritize based on role
+    if ((primaryTrait.id === "workhorse" || primaryTrait.id === "tireless") && allMatchingTraits.length > 1) {
+      const isPlaymaker = features.assistsPerSet > 6.0;
+      
+      // If player is a setter (high assists), prioritize Playmaker
+      if (isPlaymaker) {
+        const playmakerTrait = allMatchingTraits.find(t => t.id === "playmaker");
+        if (playmakerTrait) {
+          secondaryTrait = playmakerTrait;
+        }
+      } else {
+        // If not a setter, prioritize offensive traits (Striker, Piercer) over defensive (Guardian)
+        const offensiveTraits = allMatchingTraits.filter(t => 
+          t.id === "striker" || t.id === "piercer" || t.id === "finisher"
+        );
+        if (offensiveTraits.length > 0) {
+          // Prioritize Piercer > Striker > Finisher
+          secondaryTrait = offensiveTraits.find(t => t.id === "piercer") || 
+                          offensiveTraits.find(t => t.id === "striker") || 
+                          offensiveTraits[0];
+        }
+      }
+    }
+  }
+  
+  // Special combinations: Check for dual-secondary traits first
   const isPlaymaker = features.assistsPerSet > 6.0;
   const isIntimidator = (features.blocksPerSet > 1.0 || features.blockFollowsPerSet > 1.5);
+  const isStriker = (features.spikeKillsPerSet > 2.5 || features.apeKillsPerSet > 1.0) && 
+                    (features.spikeAttemptsPerSet > 4.0 || features.apeAttemptsPerSet > 1.5);
+  const isPiercer = (() => {
+    const totalAttempts = features.spikeAttemptsPerSet + features.apeAttemptsPerSet;
+    const totalKills = features.spikeKillsPerSet + features.apeKillsPerSet;
+    if (totalAttempts < 3.0) return false;
+    const killRate = totalKills / totalAttempts;
+    return (features.spikeKillsPerSet > 3.0 || features.apeKillsPerSet > 1.5) &&
+           killRate > 0.55 && totalKills > 3.0;
+  })();
   
+  // Playmaker + Offensive traits (combine with primary trait if present)
+  if (isPlaymaker && (isStriker || isPiercer)) {
+    const primaryPrefix = primaryTrait ? `${primaryTrait.name} ` : "";
+    
+    if (isPiercer) {
+      return {
+        id: primaryTrait ? `${primaryTrait.id}-playmaking-piercer` : "playmaking-piercer",
+        name: `${primaryPrefix}Playmaking Piercer`,
+        color: "#FF8787",
+        description: primaryTrait 
+          ? `${primaryTrait.name.toLowerCase()} elite setter (6+ assists/set) who also excels as an efficient offensive threat with high kills and superior kill rate (55%+), orchestrating both setting and scoring`
+          : "Elite setter (6+ assists/set) who also excels as an efficient offensive threat with high kills and superior kill rate (55%+), orchestrating both setting and scoring"
+      };
+    } else if (isStriker) {
+      return {
+        id: primaryTrait ? `${primaryTrait.id}-playmaking-striker` : "playmaking-striker",
+        name: `${primaryPrefix}Playmaking Striker`,
+        color: "#FF6B6B",
+        description: primaryTrait
+          ? `${primaryTrait.name.toLowerCase()} elite setter (6+ assists/set) who also serves as a primary offensive threat with high kill and attempt rates, orchestrating both setting and attacking`
+          : "Elite setter (6+ assists/set) who also serves as a primary offensive threat with high kill and attempt rates, orchestrating both setting and attacking"
+      };
+    }
+  }
+  
+  // Playmaker + Intimidator
   if (isPlaymaker && isIntimidator) {
     // Determine which is more dominant
     if (features.assistsPerSet > features.blocksPerSet * 3) {
@@ -343,6 +440,7 @@ export function classifyPlayerArchetype(features: Record<string, number>): Playe
         "maverick": "Takes risks and makes significant errors (2.0+ total errors or very high in specific categories) in pursuit of aggressive plays",
         "inconsistent": "Moderate error player (0.8-2.0 total errors) with variable performance",
         "precise": "Minimizes errors and maintains high consistency",
+        "tireless": "Elite high-volume player who handles an exceptional share of team actions, operating at the highest activity levels",
         "workhorse": "High volume player who handles a large share of team actions",
         "stalwart": "High volume player who maintains low errors despite heavy workload, reliable at high activity levels",
         "opportunistic": "Low volume player who makes high-impact plays when they do act, prioritizing quality opportunities",
@@ -402,6 +500,7 @@ export function classifyPlayerArchetype(features: Record<string, number>): Playe
       "maverick": "High-risk player who makes significant errors (2.0+ total errors or very high in specific categories) but takes aggressive chances",
       "inconsistent": "Moderate error player (0.8-2.0 total errors) with variable performance and reliability",
       "precise": "Low-error player who prioritizes consistency and efficiency over volume",
+      "tireless": "Elite high-volume player who handles an exceptional share of team actions and touches, operating at the highest activity levels",
       "workhorse": "High-volume player who handles a large share of team actions and touches",
       "stalwart": "High-volume player who maintains low errors despite heavy workload, reliable and consistent at high activity levels",
       "opportunistic": "Low volume player who makes high-impact plays when they do act, prioritizing quality opportunities over quantity",

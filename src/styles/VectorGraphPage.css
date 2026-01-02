@@ -269,49 +269,54 @@
   position: absolute;
   top: 1rem;
   left: 1rem;
-  z-index: 10;
-  width: 280px;
+  z-index: 25; /* Much higher than legend (z-index: 10) so search results appear above */
+  width: 224px; /* Reduced from 280px by ~20% */
 }
 
 .player-search-input {
   width: 100%;
   padding: 0.5rem 0.75rem;
   font-size: 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #3a3a3a; /* Lighter version of dark gray (#1a1a1a) */
   border-radius: 6px;
-  background-color: white;
-  color: #2d3748;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: #1a1a1a; /* Match graph background */
+  color: #e2e8f0; /* Light text for dark background */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .player-search-input:focus {
   outline: none;
-  border-color: #4a5568;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-color: #5a5a5a; /* Slightly lighter on focus */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .player-search-input::placeholder {
-  color: #a0aec0;
+  color: #6a6a6a; /* Medium gray for placeholder */
 }
 
 .player-search-results {
-  margin-top: 0.5rem;
-  background-color: white;
-  border: 1px solid #e2e8f0;
+  margin-top: 0.5rem; /* Space between input and dropdown */
+  background-color: #1a1a1a; /* Match graph background */
+  border: 1px solid #3a3a3a; /* Lighter version of dark gray */
   border-radius: 6px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   max-height: 200px;
   overflow-y: auto;
+  z-index: 25; /* Much higher than legend (z-index: 10) to ensure it appears above */
+  position: absolute; /* Absolute positioning for proper stacking above legend */
+  width: 100%; /* Match parent width */
+  top: calc(100% + 0.5rem); /* Position below the input with spacing */
+  left: 0;
 }
 
 .player-search-result-item {
   padding: 0.5rem 0.75rem;
   cursor: pointer;
-  color: #2d3748;
+  color: #e2e8f0; /* Light text for dark background */
   font-size: 14px;
   transition: background-color 0.15s;
-  border-bottom: 1px solid #f7fafc;
+  border-bottom: 1px solid #2a2a2a; /* Subtle divider */
 }
 
 .player-search-result-item:last-child {
@@ -319,16 +324,206 @@
 }
 
 .player-search-result-item:hover {
-  background-color: #f7fafc;
+  background-color: #2a2a2a; /* Slightly lighter on hover */
 }
 
 .player-search-result-more {
   padding: 0.5rem 0.75rem;
-  color: #718096;
+  color: #8a8a8a; /* Medium gray for "more" text */
   font-size: 12px;
   font-style: italic;
   text-align: center;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #2a2a2a; /* Subtle divider */
+}
+
+/* Archetype Legend */
+.archetype-legend {
+  position: absolute;
+  top: 4rem; /* Below search bar */
+  left: 1rem;
+  bottom: 2rem; /* Add margin from bottom */
+  z-index: 10;
+  width: 224px; /* Match search bar width exactly */
+  max-height: calc(600px - 5rem); /* Graph height minus search bar space */
+  overflow-y: auto;
+  overflow-x: visible; /* Allow popups to extend beyond legend */
+  padding: 0.75rem;
+  padding-bottom: 1rem; /* Extra bottom padding */
+  background-color: #1a1a1a; /* Match graph background */
+  border: 1px solid #3a3a3a; /* Lighter version of dark gray */
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: transform 0.3s ease-in-out;
+  transform: translateX(0); /* Default: visible */
+}
+
+.archetype-legend.legend-hidden {
+  transform: translateX(calc(-100% + 40px)); /* Slide left, leaving only arrow button visible */
+}
+
+.archetype-legend-toggle {
+  position: absolute;
+  top: 4rem; /* Same as legend top */
+  left: calc(1rem + 224px + 0.75rem); /* Right side of legend + more spacing */
+  background: transparent; /* No background box */
+  border: none; /* No border */
+  border-radius: 0;
+  font-size: 1.1rem; /* Larger text */
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.5); /* Muted color but visible */
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  min-width: auto;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: all 0.2s ease;
+  z-index: 15; /* Higher z-index to ensure visibility */
+  opacity: 0.6; /* Subtle by default */
+}
+
+/* When legend is hidden, move button to left edge */
+.archetype-legend-toggle.legend-hidden-toggle {
+  left: 0.75rem !important; /* Left edge with gap */
+}
+
+.archetype-legend-toggle:hover {
+  color: rgba(226, 232, 240, 1); /* Fully visible on hover */
+  opacity: 1; /* Fully visible on hover */
+}
+
+/* Custom scrollbar styling */
+.archetype-legend::-webkit-scrollbar {
+  width: 8px;
+}
+
+.archetype-legend::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.archetype-legend::-webkit-scrollbar-thumb {
+  background-color: #3a3a3a;
+  border-radius: 4px;
+}
+
+.archetype-legend::-webkit-scrollbar-thumb:hover {
+  background-color: #4a4a4a;
+}
+
+/* Firefox scrollbar */
+.archetype-legend {
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a3a transparent;
+}
+
+.archetype-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  color: #e2e8f0; /* Light text for dark background */
+  font-size: 13px;
+  cursor: pointer;
+  position: relative;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+  overflow: visible; /* Allow popup to extend beyond item */
+}
+
+.archetype-legend-item:hover {
+  background-color: #2a2a2a; /* Slightly lighter on hover */
+}
+
+.archetype-legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.archetype-legend-name {
+  flex: 1;
+  font-weight: 500;
+  min-width: 0; /* Allow text truncation */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archetype-legend-count {
+  color: #8a8a8a; /* Medium gray for count */
+  font-size: 12px;
+}
+
+.archetype-legend-popup {
+  position: fixed; /* Use fixed positioning to escape overflow constraints */
+  min-width: 250px;
+  max-width: 320px;
+  width: max-content;
+  padding: 1rem;
+  background-color: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 12px;
+  line-height: 1.5;
+  z-index: 10000; /* Very high z-index to ensure it's above everything */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  transform: translateX(0.75rem); /* Offset to the right */
+}
+
+.archetype-legend-popup::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 0.75rem;
+  border: 6px solid transparent;
+  border-right-color: #2a2a2a;
+}
+
+.archetype-popup-header {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #3a3a3a;
+}
+
+.archetype-popup-description {
+  margin-bottom: 0.75rem;
+  color: #e2e8f0;
+}
+
+.archetype-popup-thresholds {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #3a3a3a;
+}
+
+.archetype-popup-thresholds strong {
+  display: block;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.archetype-popup-thresholds-text {
+  color: #b0b0b0;
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 .vector-graph-empty {

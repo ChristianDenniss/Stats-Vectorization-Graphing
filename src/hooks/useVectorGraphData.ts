@@ -1,166 +1,108 @@
+// src/hooks/useVectorGraphData.ts
 // Data fetching hooks for the vector graph page
-// API calls are commented out but ready to be used when connecting to real API
 // Currently the app uses mock data directly in VectorGraphPage.tsx
+// To use these hooks, uncomment the code below and comment out the mock data in VectorGraphPage.tsx
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+// import { authFetch } from "./authFetch";
 import type { Player, Season } from "../types/interfaces";
-// import { mockPlayers, mockSeasons } from "../mockData/generateMockData";
-
-interface UseFetchResult<T> {
-  data: T | null;
-  loading: boolean;
-  error: string | null;
-}
-
-// Configuration - adjust these to match your API endpoints
-// When ready to connect to a real API, uncomment the fetch calls below
-const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL as string | undefined) || "http://localhost:3001/api";
 
 /**
- * Fetches all players with their stats included
+ * Hook to fetch all players with their stats (includes game and season relations)
+ * This is needed for vectorization which requires stats with game.season data
  * 
- * TO USE THIS HOOK WITH REAL API:
- * 1. Uncomment the fetch call below
- * 2. Remove or comment out the mock data section
- * 3. Adjust the endpoint and response structure to match your API
- * 4. Update VectorGraphPage.tsx to use this hook instead of direct mock data
+ * TO USE THIS HOOK:
+ * 1. Create authFetch utility file or uncomment the import
+ * 2. Uncomment the code below
+ * 3. Comment out mock data usage in VectorGraphPage.tsx
  */
-export function useFetchPlayersWithStats(): UseFetchResult<Player[]> {
+export const useFetchPlayersWithStats = () => {
   const [data, setData] = useState<Player[] | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
+  // COMMENTED OUT - Using mock data directly in VectorGraphPage instead
+  // const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+  // 
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     try {
+  //       const response = await authFetch(`${backendUrl}/api/players`, {
+  //         method: "GET"
+  //       });
+  //
+  //       if (!response.ok) {
+  //         throw new Error("Network response was not ok");
+  //       }
+  //
+  //       const result: Player[] = await response.json();
+  //       setData(result);
+  //     } catch (err: any) {
+  //       console.error("Fetch error [players]:", err);
+  //       setError(err.message);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  //
+  //   fetchData();
+  // }, []);
+
+  // Return empty state since we're using mock data
   useEffect(() => {
-    let cancelled = false;
-
-    async function fetchPlayers() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // API CALL - Uncomment to use real API
-        /*
-        const response = await fetch(`${API_BASE_URL}/players?includeStats=true`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch players: ${response.statusText}`);
-        }
-
-        const players: Player[] = await response.json();
-        
-        if (!cancelled) {
-          setData(players);
-          setLoading(false);
-        }
-        */
-        
-        // MOCK DATA - Currently commented out (app uses mock data directly)
-        // Uncomment below if you want to use this hook with mock data:
-        /*
-        // Simulate API delay for realistic behavior
-        await new Promise(resolve => setTimeout(resolve, 300));
-        const players: Player[] = mockPlayers;
-        
-        if (!cancelled) {
-          setData(players);
-          setLoading(false);
-        }
-        */
-        
-        // For now, return empty data since we're using mock data directly
-        if (!cancelled) {
-          setData(null);
-          setLoading(false);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Unknown error fetching players");
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchPlayers();
-
-    return () => {
-      cancelled = true;
-    };
+    setLoading(false);
   }, []);
 
   return { data, loading, error };
-}
+};
 
 /**
- * Fetches all seasons
+ * Hook to fetch all seasons
+ * Used for the season selector dropdown
  * 
- * TO USE THIS HOOK WITH REAL API:
- * 1. Uncomment the fetch call below
- * 2. Remove or comment out the mock data section
- * 3. Adjust the endpoint and response structure to match your API
- * 4. Update VectorGraphPage.tsx to use this hook instead of direct mock data
+ * TO USE THIS HOOK:
+ * 1. Create authFetch utility file or uncomment the import
+ * 2. Uncomment the code below
+ * 3. Comment out mock data usage in VectorGraphPage.tsx
  */
-export function useFetchSeasons(): UseFetchResult<Season[]> {
+export const useFetchSeasons = () => {
   const [data, setData] = useState<Season[] | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
+  // COMMENTED OUT - Using mock data directly in VectorGraphPage instead
+  // const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+  //
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     try {
+  //       // Use /skinny endpoint to avoid loading unnecessary relations
+  //       const response = await authFetch(`${backendUrl}/api/seasons/skinny`, {
+  //         method: "GET"
+  //       });
+  //
+  //       if (!response.ok) {
+  //         throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+  //       }
+  //
+  //       const result: Season[] = await response.json();
+  //       setData(result);
+  //     } catch (err: any) {
+  //       console.error("Fetch error [seasons]:", err);
+  //       setError(err.message);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  //
+  //   fetchData();
+  // }, []);
+
+  // Return empty state since we're using mock data
   useEffect(() => {
-    let cancelled = false;
-
-    async function fetchSeasons() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // API CALL - Uncomment to use real API
-        /*
-        const response = await fetch(`${API_BASE_URL}/seasons`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch seasons: ${response.statusText}`);
-        }
-
-        const seasons: Season[] = await response.json();
-        
-        if (!cancelled) {
-          setData(seasons);
-          setLoading(false);
-        }
-        */
-        
-        // MOCK DATA - Currently commented out (app uses mock data directly)
-        // Uncomment below if you want to use this hook with mock data:
-        /*
-        // Simulate API delay for realistic behavior
-        await new Promise(resolve => setTimeout(resolve, 200));
-        const seasons: Season[] = mockSeasons;
-        
-        if (!cancelled) {
-          setData(seasons);
-          setLoading(false);
-        }
-        */
-        
-        // For now, return empty data since we're using mock data directly
-        if (!cancelled) {
-          setData(null);
-          setLoading(false);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Unknown error fetching seasons");
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchSeasons();
-
-    return () => {
-      cancelled = true;
-    };
+    setLoading(false);
   }, []);
 
   return { data, loading, error };
-}
+};
 

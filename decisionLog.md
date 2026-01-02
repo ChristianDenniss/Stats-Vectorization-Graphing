@@ -553,6 +553,207 @@ const vectorRows = useMemo(() => {
 - "Tireless" is checked before "Workhorse" in the PRIMARY_TRAITS array to ensure proper classification
 **Status:** ✅ Implemented (v2.13)
 
+#### Decision: Adjust Tireless/Workhorse Thresholds for Better Distribution
+**Decision:** Increase "Tireless" thresholds to create a more even split between "Tireless" and "Workhorse" categories.
+**Rationale:**
+- Initial thresholds resulted in "Tireless" completely replacing "Workhorse" instead of splitting the group
+- Need a more balanced distribution where both categories are represented
+- Higher "Tireless" thresholds make it more exclusive, leaving more room for "Workhorse"
+**Implementation:**
+- Increased "Tireless" thresholds: >7.0 spike attempts/set (from 6.5), >3.2 ape attempts/set (from 2.8), >10.5 assists/set (from 9.5)
+- Updated "Workhorse" exclusion check to match new "Tireless" thresholds
+- Removed duplicate "workhorse" entry that was causing classification conflicts
+- Further refined to >7.5 spike attempts/set for optimal exclusivity
+**Status:** ✅ Implemented (v2.14)
+
+#### Decision: Player Search Functionality
+**Decision:** Add search bar in top left of graph section to allow users to quickly find and focus on specific players.
+**Rationale:**
+- Large graphs with many players make it difficult to find specific individuals
+- Search provides quick access to any player in the current dataset
+- Camera animation to selected player improves discoverability
+- Enhances user experience by reducing time spent manually exploring the graph
+**Implementation:**
+- Search input positioned absolutely in top left (1rem from edges)
+- Real-time filtering as user types (case-insensitive substring matching)
+- Dropdown results show up to 5 matches with "+X more" indicator if needed
+- Clicking result triggers camera animation to player position and auto-selects player
+- Camera uses smooth easing animation (ease-out cubic) over 1 second duration
+- Search bar styled to match dark graph background for seamless integration
+- Width optimized to 224px (reduced from 280px) for better proportions
+**Status:** ✅ Implemented (v3.0)
+
+#### Decision: Archetype Legend with Click Popups
+**Decision:** Add legend below search bar showing all archetypes in current graph with click-to-view detailed information.
+**Rationale:**
+- Users need to understand what archetypes are present in the current visualization
+- Legend provides quick reference for archetype colors and distribution
+- Click popups allow detailed exploration without cluttering the UI
+- Separates high-level overview (description) from low-level details (statistical thresholds)
+**Implementation:**
+- Legend positioned below search bar, same width (224px) for visual consistency
+- Displays archetype name, color circle, and player count
+- Sorted by count (descending) then alphabetically
+- Clicking archetype shows popup with:
+  - Header: Archetype name
+  - Description: High-level explanation of what the archetype represents
+  - Thresholds: Specific statistical conditions (numbers/requirements)
+- Popup styled as formatted box with max-width (320px) and proper text wrapping
+- Legend scrollable with custom dark scrollbar (thin bar, no box, matches theme)
+- Bottom margin (2rem) prevents overlap with screen edge
+- Max-height constraint keeps legend within graph bounds
+**Status:** ✅ Implemented (v3.0)
+
+#### Decision: Use Skinny Seasons Endpoint
+**Decision:** Switch from `/api/seasons` to `/api/seasons/skinny` endpoint to avoid 500 errors.
+**Rationale:**
+- Full seasons endpoint loads relations (teams, games, awards) causing 500 errors
+- Frontend only needs basic season metadata (seasonNumber, theme, id) for dropdown
+- Skinny endpoint avoids unnecessary data transfer and improves reliability
+- Prevents deployment failures due to server resource constraints
+**Implementation:**
+- Updated `useFetchSeasons` hook to use `/api/seasons/skinny` endpoint
+- Improved error messages to include HTTP status codes for better debugging
+**Status:** ✅ Implemented (v3.0)
+
+#### Decision: Prioritize Offensive Traits for High-Volume Players
+**Decision:** When Workhorse/Tireless players qualify for multiple secondary traits, prioritize offensive traits (Striker, Piercer) over defensive (Guardian).
+**Rationale:**
+- High-volume players often qualify for both offensive and defensive secondary traits
+- Without prioritization, defensive traits were being selected first (due to array order)
+- This resulted in "Workhorse Guardian" being more common than "Workhorse Striker"
+- Offensive traits better represent the primary role of high-volume players
+- Creates more diverse and accurate archetype combinations
+**Implementation:**
+- Added logic to detect when Workhorse/Tireless players match multiple secondary traits
+- Prioritizes offensive traits: Piercer > Striker > Finisher
+- Only applies when player qualifies for both offensive and defensive traits
+- Maintains existing behavior for players who only match one category
+**Status:** ✅ Implemented (v3.1)
+
+#### Decision: Prioritize Playmaker for Offensive Setters
+**Decision:** When a player qualifies for both Playmaker (assists >6.0/set) and offensive traits (Striker, Piercer), prioritize Playmaker and combine them (e.g., "Playmaking Striker").
+**Rationale:**
+- Offensive setters were being labeled as just "Striker" without acknowledging their setting role
+- Setters with high assists should be identified as Playmakers first
+- Combining Playmaker with offensive traits creates more accurate labels like "Tireless Playmaking Striker"
+- Better represents players who both set and attack effectively
+**Implementation:**
+- Added special combination checks for Playmaker + Striker/Piercer
+- These combinations include primary traits when present (e.g., "Tireless Playmaking Striker")
+- Special combinations checked before regular primary+secondary combinations
+- Ensures setters are properly identified even when they have good offensive stats
+**Status:** ✅ Implemented (v3.1)
+
+#### Decision: Rename "Precise" to "Technician"
+**Decision:** Rename the "Precise" primary trait to "Technician" to improve naming when combined with other traits.
+**Rationale:**
+- "Precise Versatile" and "Workhorse Precise" sounded awkward
+- "Technician" better describes a player who minimizes errors through technical skill
+- "Technician Versatile" and "Workhorse Technician" read more naturally
+- Maintains the same meaning (low errors, technical precision) with better naming
+**Implementation:**
+- Changed primary trait ID from "precise" to "technician"
+- Updated all references, descriptions, and threshold displays
+- No functional changes, only naming improvements
+**Status:** ✅ Implemented (v3.1)
+
+#### Decision: Fix Archetype Legend Popup Visibility
+**Decision:** Change archetype legend popup to fixed positioning to escape container overflow constraints.
+**Rationale:**
+- Popup was being clipped by parent container's `overflow: hidden`
+- Fixed positioning allows popup to render outside the container bounds
+- Better user experience when viewing archetype details
+**Implementation:**
+- Changed popup from `position: absolute` to `position: fixed`
+- Moved popup rendering outside legend container
+- Added refs and useEffect to calculate position based on clicked item's location
+- Uses getBoundingClientRect() for accurate positioning
+**Status:** ✅ Implemented (v3.2)
+
+#### Decision: Add Hide/Show Toggle for Archetype Legend
+**Decision:** Add ability to hide and show the archetype legend to reduce UI clutter when not needed.
+**Rationale:**
+- Legend takes up significant screen space
+- Users may want to focus on the graph without the legend visible
+- Consistent with info panel hide/show functionality
+- Improves flexibility of the UI
+**Implementation:**
+- Added × button in top-right of legend to hide it
+- Added ⓘ button in same position when hidden to show it again
+- State management with `legendHidden` boolean
+- Styled buttons to match dark theme and existing UI patterns
+**Status:** ✅ Implemented (v3.2)
+
+#### Decision: Fix Search Results Z-Index
+**Decision:** Increase search results dropdown z-index to appear above archetype legend.
+**Rationale:**
+- Search results were appearing behind the legend when both were visible
+- Search functionality should have visual priority when active
+- Better user experience when searching for players
+**Implementation:**
+- Increased search container z-index from 10 to 25
+- Changed search results to absolute positioning with proper top calculation
+- Legend remains at z-index: 10
+- Ensures search results always appear on top
+**Status:** ✅ Implemented (v3.2)
+
+#### Decision: Sliding Legend Toggle with Arrow Buttons
+**Decision:** Replace ×/ⓘ buttons with < and > arrows that slide the legend horizontally, with button repositioning.
+**Rationale:**
+- × and ⓘ buttons were taking up space inside the legend
+- Sliding animation provides better visual feedback
+- Arrow buttons (< and >) are more intuitive for hide/show actions
+- Moving button outside legend prevents it from blocking content
+- Button on left edge when hidden makes it easy to find and restore legend
+**Implementation:**
+- Changed toggle buttons from ×/ⓘ to < and > arrows
+- Added CSS transform animation for smooth sliding (translateX)
+- Button positioned outside legend: right side when visible, left edge when hidden
+- Button styled as text-only (no background/border) for subtle appearance
+- Muted opacity (0.6) by default, fully visible on hover
+- Removed top padding from legend since button is outside
+**Status:** ✅ Implemented (v3.2)
+
+#### Decision: Prioritize Error-Based Traits Over Volume-Based Traits
+**Decision:** When a player qualifies for both error-based (Maverick, Inconsistent, Precise) and volume-based (Tireless, Workhorse) primary traits, prioritize error-based traits.
+**Rationale:**
+- Volume-based traits were dominating because they appear earlier in the array
+- Error-based traits provide more meaningful differentiation
+- Creates more diverse archetype combinations (e.g., "Inconsistent Striker" vs just "Tireless")
+- Better represents player characteristics beyond just volume
+**Implementation:**
+- Modified primary trait selection to check all matching traits first
+- Prioritize error-based traits: Maverick, Inconsistent, Precise, Opportunistic, Selective, Steady, Stalwart
+- Fall back to volume-based traits only if no error-based trait matches
+- This ensures combinations like "Inconsistent Striker", "Maverick Striker", "Workhorse Striker" appear more frequently
+**Status:** ✅ Implemented (v3.2)
+
+#### Decision: Make Tireless More Restrictive
+**Decision:** Increase Tireless thresholds to reduce overuse and create better distribution with Workhorse.
+**Rationale:**
+- Tireless was appearing too frequently, overshadowing other archetypes
+- Need better balance between Tireless (elite) and Workhorse (high volume)
+- More restrictive thresholds make Tireless truly elite
+**Implementation:**
+- Increased thresholds: spike attempts >8.0/set (from 7.5), ape attempts >3.5/set (from 3.2), assists >11.0/set (from 10.5)
+- Updated Workhorse exclusion check to match new Tireless thresholds
+- Updated threshold description in popup
+**Status:** ✅ Implemented (v3.2)
+
+#### Decision: Add "Technician" as Standalone Archetype
+**Decision:** Add "Technician" as a standalone archetype (not a prefix) for players with exceptional technical precision.
+**Rationale:**
+- Need a standalone archetype for technical precision specialists
+- Different from "Precise" prefix which can combine with other traits
+- Represents players who excel through flawless execution rather than volume
+**Implementation:**
+- Added to STANDALONE_ARCHETYPES array
+- Conditions: total errors <0.4/set, spiking errors <0.25/set, setting errors <0.15/set, attempts ≥3.0/set, kill rate >50%, kills ≥2.0/set
+- Distinct from "Sniper" (higher kill rate requirement) and "Anchor" (lower volume)
+- Appears as just "Technician" (not combined with other traits)
+**Status:** ✅ Implemented (v3.2)
+
 ---
 
 ## Notes
