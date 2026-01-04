@@ -305,7 +305,7 @@
   overflow-y: hidden;
   z-index: 25; /* Much higher than legend (z-index: 10) to ensure it appears above */
   position: absolute; /* Absolute positioning for proper stacking above legend */
-  width: 100%; /* Match parent width */
+  width: 200px; /* Narrower than input container */
   top: calc(100% + 0.5rem); /* Position below the input with spacing */
   left: 0;
 }
