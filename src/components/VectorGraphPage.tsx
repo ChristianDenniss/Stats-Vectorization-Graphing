@@ -533,7 +533,7 @@ function VectorGraph3D({
         />
         {searchResults.length > 0 && (
           <div className="player-search-results">
-            {searchResults.slice(0, 6).map((player) => (
+            {searchResults.slice(0, searchResults.length > 5 ? 5 : 6).map((player) => (
               <div
                 key={player.playerId}
                 className="player-search-result-item"
@@ -542,9 +542,9 @@ function VectorGraph3D({
                 {player.playerName}
               </div>
             ))}
-            {searchResults.length > 6 && (
+            {searchResults.length > 5 && (
               <div className="player-search-result-more">
-                +{searchResults.length - 6} more
+                +{searchResults.length - 5} more
               </div>
             )}
           </div>
