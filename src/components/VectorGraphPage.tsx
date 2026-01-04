@@ -533,7 +533,7 @@ function VectorGraph3D({
         />
         {searchResults.length > 0 && (
           <div className="player-search-results">
-            {searchResults.slice(0, 5).map((player) => (
+            {searchResults.slice(0, 6).map((player) => (
               <div
                 key={player.playerId}
                 className="player-search-result-item"
@@ -542,9 +542,9 @@ function VectorGraph3D({
                 {player.playerName}
               </div>
             ))}
-            {searchResults.length > 5 && (
+            {searchResults.length > 6 && (
               <div className="player-search-result-more">
-                +{searchResults.length - 5} more
+                +{searchResults.length - 6} more
               </div>
             )}
           </div>
@@ -817,7 +817,7 @@ const VectorGraphPage: React.FC = () => {
       <div className="vector-graph-header">
         <h1>Player Stats Vectorization</h1>
         <p className="subtitle">
-          Explore player statistical profiles in 3D space. Each point represents a player's normalized
+          Explore player statistical totals in 3D space. Each point represents a player's normalized
           performance across multiple statistical dimensions.
         </p>
       </div>
